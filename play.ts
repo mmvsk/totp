@@ -110,7 +110,6 @@ while (true) {
 
 			} else {
 				console.error("invalid");
-				console.log({ code, secret, period, algorithm })
 			}
 		} break;
 
