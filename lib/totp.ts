@@ -147,8 +147,8 @@ export async function VerifyHotpCode(
 /**
  * generate a random base32-encoded secret key.
  *
- * - note 1: 5 bytes gives an 8-chars-long secret (otherwise padded).
- * - node 2: in the QR-code for authenticator apps, GitHub gives a secret of 10 bytes
+ * - note 1: base 32 encoding will produce 8 chars for each 5 bytes of key
+ * - node 2: a good value is 10 bytes (16 chars), as github do in 2024
  */
 export function GenerateRandomSecret(byteLength: number): Base32String {
 	const secretBytes = crypto.getRandomValues(new Uint8Array(byteLength));
@@ -157,7 +157,7 @@ export function GenerateRandomSecret(byteLength: number): Base32String {
 
 
 /**
- * generate a TOTP url, so it can be presented as a QR code to the authenticator app.
+ * generate a TOTP url, which can then be converted to a QR code to be scanned by an authenticator app.
  *
  * github example: issuer=GitHub, account=Github:[username], secret is 10 bytes long
  */
@@ -188,10 +188,10 @@ export function GenerateTotpUrl(
 
 
 /**
- * generate many paper backup codes (to be stored in a database, and written by the user).
+ * generate multiple backup codes (paper codes).
  *
- * - note 1: 5 bytes gives an 8-chars-long secret (otherwise padded).
- * - node 2: “group by” means grouping with dashes, group by one means no breaking
+ * - note 1: base 32 encoding will produce 8 chars for each 5 bytes of key
+ * - node 2: “group by” means grouping using dashes, group by one means no breaking
  */
 export function GenerateBackupCodes(count: number, byteLength: number, groupBy: 1 | 4 | 8 = 1) {
 	return [...Array(count)].map(() => GenerateSingleBackupCode(byteLength, groupBy));
@@ -199,10 +199,10 @@ export function GenerateBackupCodes(count: number, byteLength: number, groupBy: 
 
 
 /**
- * generate a single paper backup code (to be stored in a database, and written by the user).
+ * generate a single backup code (paper code).
  *
- * - note 1: 5 bytes gives an 8-chars-long secret (otherwise padded).
- * - node 2: “group by” means grouping with dashes, group by one means no breaking
+ * - note 1: base 32 encoding will produce 8 chars for each 5 bytes of key
+ * - node 2: “group by” means grouping using dashes, group by one means no breaking
  */
 export function GenerateSingleBackupCode(byteLength: number, groupBy: 1 | 4 | 8 = 1) {
 	const secret = GenerateRandomSecret(byteLength);
@@ -216,7 +216,7 @@ export function GenerateSingleBackupCode(byteLength: number, groupBy: 1 | 4 | 8 
 
 
 /**
- * estimate time left for a specific period.
+ * estimate time left for a specific period time window.
  */
 export function EstimateTimeLeft(period: Seconds = DefaultPeriod) {
 	return period - (Math.floor(GetSystemTime()) % period);
@@ -224,10 +224,10 @@ export function EstimateTimeLeft(period: Seconds = DefaultPeriod) {
 
 
 /**
- * estimates allowed skew for a specific period and threshold.
+ * estimates allowed skew for a specific period time window and tolerance threshold.
  *
  * @param {Seconds} period - period duration to check against
- * @param {Seconds} threshold - time window boundary proximity threshold
+ * @param {Seconds} threshold - threshold of tolerance to the proximity of the period time window boundary
  */
 export function EstimateSkewAllowance(period: Seconds = DefaultPeriod, threshold: Seconds = 10) {
 	const timeLeft = EstimateTimeLeft(period);

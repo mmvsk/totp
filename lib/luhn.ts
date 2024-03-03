@@ -13,8 +13,6 @@ export function CalculateLuhnChecksum(payload: DigitsString) {
 		sum += i % 2 === parity ? LuhnLookup[digit] : digit;
 	}
 
-	/* can also use: return (10 - (sum % 10)) % 10; */
-
 	const lastDigit = sum % 10;
 	return lastDigit === 0 ? 0 : 10 - lastDigit;
 }
