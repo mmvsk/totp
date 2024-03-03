@@ -4,91 +4,29 @@ import { EncodeToBase32, DecodeBase32 } from "./base32";
 /* types
  * -------------------------------------------------------------------------- */
 
+type Long = number;
+type Base32 = string;
+type Digits = string;
+type Seconds = number;
+
 type Algorithm = (
 	| "SHA-1"
 	| "SHA-256"
 	| "SHA-512"
 );
 
-type Long = number; // long
-type Base32 = string;
-type Digits = string;
-type Seconds = number;
 
-type HotpGenerationOptions = Readonly<{
-	length?: 6 | 7 | 8 | 9 | 10; // number of digits
-	algorithm?: Algorithm;
-}>;
+/* TOTP
+ * -------------------------------------------------------------------------- */
 
 type TotpGenerationOptions = HotpGenerationOptions & Readonly<{
 	stepTime?: Seconds;
-}>;
-
-type HotpVerificationOptions = HotpGenerationOptions & Readonly<{
-	drift?: number;
-	beforeDrift?: number;
-	afterDrift?: number;
 }>;
 
 type TotpVerificationOptions = (
 	& HotpVerificationOptions
 	& TotpGenerationOptions
 );
-
-
-/* main exports
- * -------------------------------------------------------------------------- */
-
-export async function GenerateHotpCode(
-	counter: Long,
-	secret: Base32,
-	options?: HotpGenerationOptions
-):
-	Promise<Digits>
-{
-	const length = options?.length ?? 6;
-	const algorithm = options?.algorithm ?? "SHA-1";
-	const counterState = GetCounterState(counter);
-
-	const keyBytes = DecodeBase32(secret);
-
-	const hashBytes = await HashCounterState(counterState, keyBytes, algorithm);
-
-	// truncate to 4 bytes
-	const offset = hashBytes[hashBytes.length - 1] & 0xf;
-	const fullCode = (0
-		| ((hashBytes[offset + 0] & 0x7f) << 24)
-		| ((hashBytes[offset + 1] & 0xff) << 16)
-		| ((hashBytes[offset + 2] & 0xff) << 8)
-		| (hashBytes[offset + 3] & 0xff)
-	);
-
-	const code = fullCode.toString(10).slice(-length).padStart(length, "0");
-
-	return code;
-};
-
-
-export async function VerifyHotpCode(
-	code: Digits,
-	counter: Long,
-	secret: Base32,
-	options?: HotpVerificationOptions
-):
-	Promise<boolean>
-{
-	const drift = (options?.drift ?? 0) / 2;
-	const beforeDrift = options?.beforeDrift ?? drift;
-	const afterDrift = options?.afterDrift ?? drift;
-
-	for (let i = counter - beforeDrift; i <= counter + afterDrift; i++) {
-		if (await GenerateHotpCode(i, secret, options) === code) {
-			return true;
-		}
-	}
-
-	return false;
-};
 
 
 export async function GenerateTotpCode(
@@ -116,7 +54,77 @@ export async function VerifyTotpCode(
 }
 
 
-/* utility exports
+/* HOTP
+ * -------------------------------------------------------------------------- */
+
+type HotpGenerationOptions = Readonly<{
+	length?: 6 | 7 | 8 | 9 | 10; // number of digits
+	algorithm?: Algorithm;
+}>;
+
+type HotpVerificationOptions = HotpGenerationOptions & Readonly<{
+	drift?: number;
+	driftLeft?: number;
+	driftRight?: number;
+}>;
+
+
+export async function GenerateHotpCode(
+	counter: Long,
+	secret: Base32,
+	options?: HotpGenerationOptions
+):
+	Promise<Digits>
+{
+	const length = options?.length ?? 6;
+	const algorithm = options?.algorithm ?? "SHA-1";
+	const counterState = GetCounterState(counter);
+
+	const keyBytes = DecodeBase32(secret);
+
+	const hashBytes = await HashCounterState(counterState, keyBytes, algorithm);
+
+	const offset = hashBytes[hashBytes.length - 1] & 0xf;
+	const fullCode = (0
+		| ((hashBytes[offset + 0] & 0x7f) << 24)
+		| ((hashBytes[offset + 1] & 0xff) << 16)
+		| ((hashBytes[offset + 2] & 0xff) << 8)
+		| (hashBytes[offset + 3] & 0xff)
+	);
+
+	const code = fullCode.toString(10).slice(-length).padStart(length, "0");
+
+	return code;
+};
+
+
+export async function VerifyHotpCode(
+	code: Digits,
+	counter: Long,
+	secret: Base32,
+	options?: HotpVerificationOptions
+):
+	Promise<boolean>
+{
+	const drift = (options?.drift ?? 0) / 2;
+	const driftLeft = options?.driftLeft ?? drift;
+	const driftRight = options?.driftRight ?? drift;
+
+	const leftSteps = [...Array(driftLeft).keys()].map(i => counter - (i + 1));
+	const rightSteps = [...Array(driftRight).keys()].map(i => counter + (i + 1));
+	const steps = [counter, ...InterleaveArrays(leftSteps, rightSteps)];
+
+	for (let i = 0; i < steps.length; i++) {
+		if (await GenerateHotpCode(i, secret, options) === code) {
+			return true;
+		}
+	}
+
+	return false;
+};
+
+
+/* utilities
  * -------------------------------------------------------------------------- */
 
 /**
@@ -187,7 +195,7 @@ function GetCounterState(counter: number): Uint8Array {
 }
 
 
-async function HashCounterState(counterState: Uint8Array, secretKey: Uint8Array, algorithm: Algorithm) {
+async function HashCounterState(counterState: Uint8Array, secretKey: Uint8Array, algorithm: Algorithm): Promise<Uint8Array> {
 	const hmacKey = await crypto.subtle.importKey(
 		"raw",
 		secretKey,
@@ -203,4 +211,14 @@ async function HashCounterState(counterState: Uint8Array, secretKey: Uint8Array,
 	);
 
 	return new Uint8Array(hmacHash);
+}
+
+
+function InterleaveArrays<T extends {} | null>(...arrays: T[][]) {
+	return (
+		[...Array(Math.max(...arrays.map(a => a.length))).keys()]
+			.map(i => arrays.map(a => a[i] ?? undefined))
+			.flat()
+			.filter(x => typeof x !== "undefined")
+	);
 }
