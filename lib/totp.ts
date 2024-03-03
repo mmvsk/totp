@@ -41,7 +41,7 @@ export async function GenerateTotpCode(
 	Promise<DigitsString>
 {
 	const period = options?.period ?? DefaultPeriod;
-	const counter = Math.floor(Date.now() / 1000 / period);
+	const counter = Math.floor(GetSystemTime() / period);
 	return await GenerateHotpCode(counter, secret, options);
 }
 
@@ -54,7 +54,7 @@ export async function VerifyTotpCode(
 	Promise<boolean>
 {
 	const period = options?.period ?? DefaultPeriod;
-	const counter = Math.floor(Date.now() / 1000 / period);
+	const counter = Math.floor(GetSystemTime() / period);
 	return await VerifyHotpCode(code, counter, secret, options);
 }
 
@@ -71,6 +71,7 @@ type HotpVerificationOptions = HotpGenerationOptions & Readonly<{
 	drift?: number;
 	driftLeft?: number;
 	driftRight?: number;
+	strictDigits?: boolean; // default false
 }>;
 
 
@@ -111,6 +112,22 @@ export async function VerifyHotpCode(
 ):
 	Promise<boolean>
 {
+	if (code.length < 6 || code.length > 10) {
+		return false;
+	}
+
+	const digits = code.length as DigitsLength;
+
+	if (options?.strictDigits) {
+		if (!options.digits) {
+			throw new Error("strict digits: you must provide a specific number of expected digits");
+		}
+
+		if (code.length !== options.digits) {
+			return false;
+		}
+	}
+
 	const drift = (options?.drift ?? 0) / 2;
 	const driftLeft = options?.driftLeft ?? drift;
 	const driftRight = options?.driftRight ?? drift;
@@ -120,7 +137,7 @@ export async function VerifyHotpCode(
 	const steps = [counter, ...InterleaveArrays(leftSteps, rightSteps)];
 
 	for (let i = 0; i < steps.length; i++) {
-		if (await GenerateHotpCode(steps[i], secret, options) === code) {
+		if (await GenerateHotpCode(steps[i], secret, { ...options, digits }) === code) {
 			return true;
 		}
 	}
@@ -150,19 +167,19 @@ export function GenerateRandomSecret(byteLength: number): Base32String {
  * github example: issuer=GitHub, account=Github:[username], secret is 10 bytes long
  */
 export function GenerateTotpUrl(
-	secret: Base32String,
 	issuer: string,
 	user: string,
+	secret: Base32String,
 	options?: Readonly<{
-		period?: Seconds;
 		digits?: DigitsLength;
-		algoritm?: Algorithm;
+		period?: Seconds;
+		algorithm?: Algorithm;
 	}>
 ) {
 	const encodedIssuer = encodeURIComponent(issuer);
 	const encodedAccount = encodeURIComponent(`${issuer}:${user}`);
 
-	const algorithmOption = options?.algoritm ? `&algorithm=${options.algoritm.replace(/-/g, "")}` : "";
+	const algorithmOption = options?.algorithm ? `&algorithm=${options.algorithm.replace(/-/g, "")}` : "";
 	const digitsOption = options?.digits ? `&digits=${options.digits}` : "";
 	const periodOption = options?.period ? `&period=${options.period}` : "";
 
@@ -207,7 +224,7 @@ export function GenerateSingleBackupCode(byteLength: number, groupBy: 1 | 4 | 8 
  * estimates time left given a specific period.
  */
 export function EstimateTimeLeft(period: Seconds = DefaultPeriod) {
-	return period - (Math.floor(Date.now() / 1000) % period);
+	return period - (Math.floor(GetSystemTime()) % period);
 }
 
 
@@ -217,14 +234,19 @@ export function EstimateTimeLeft(period: Seconds = DefaultPeriod) {
 export function EstimateDrift(period: Seconds = DefaultPeriod, imprecision: Seconds = 10) {
 	const timeLeft = EstimateTimeLeft(period);
 	return {
-		driftLeft: timeLeft < imprecision ? 1 : 0,
-		driftRight: period - timeLeft < imprecision ? 1 : 0,
+		driftRight: timeLeft < imprecision ? 1 : 0,
+		driftLeft: period - timeLeft < imprecision ? 1 : 0,
 	}
 }
 
 
 /* internal
  * -------------------------------------------------------------------------- */
+
+function GetSystemTime() {
+	return Date.now() / 1000;
+}
+
 
 function GetCounterState(counter: number): Uint8Array {
 	const state = new Uint8Array(8);
