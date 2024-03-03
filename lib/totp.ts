@@ -50,9 +50,7 @@ export async function VerifyTotpCode(
 	code: DigitsString | string,
 	secret: Base32String,
 	options?: TotpVerificationOptions
-):
-	Promise<boolean>
-{
+) {
 	const period = options?.period ?? DefaultPeriod;
 	const counter = Math.floor(GetSystemTime() / period);
 	return await VerifyHotpCode(code, counter, secret, options);
@@ -68,10 +66,8 @@ type HotpGenerationOptions = Readonly<{
 }>;
 
 type HotpVerificationOptions = HotpGenerationOptions & Readonly<{
-	drift?: number;
-	driftLeft?: number;
-	driftRight?: number;
 	strictDigits?: boolean; // default false
+	allowedSkew?: { left: number, right: number };
 }>;
 
 
@@ -109,9 +105,7 @@ export async function VerifyHotpCode(
 	counter: LongInt,
 	secret: Base32String,
 	options?: HotpVerificationOptions
-):
-	Promise<boolean>
-{
+) {
 	if (code.length < 6 || code.length > 10) {
 		return false;
 	}
@@ -128,16 +122,17 @@ export async function VerifyHotpCode(
 		}
 	}
 
-	const drift = (options?.drift ?? 0) / 2;
-	const driftLeft = options?.driftLeft ?? drift;
-	const driftRight = options?.driftRight ?? drift;
+	const allowedSkew = options?.allowedSkew;
 
-	const leftSteps = [...Array(driftLeft).keys()].map(i => counter - (i + 1));
-	const rightSteps = [...Array(driftRight).keys()].map(i => counter + (i + 1));
-	const steps = [counter, ...InterleaveArrays(leftSteps, rightSteps)];
+	const counterValues = (
+		!allowedSkew ? [counter] : [counter, ...InterleaveArrays(
+			[...Array(allowedSkew.left).keys()].map(i => counter - (i + 1)),
+			[...Array(allowedSkew.right).keys()].map(i => counter - (i + 1)),
+		)]
+	);
 
-	for (let i = 0; i < steps.length; i++) {
-		if (await GenerateHotpCode(steps[i], secret, { ...options, digits }) === code) {
+	for (let i = 0; i < counterValues.length; i++) {
+		if (await GenerateHotpCode(counterValues[i], secret, { ...options, digits }) === code) {
 			return true;
 		}
 	}
@@ -198,7 +193,7 @@ export function GenerateTotpUrl(
  * - note 1: 5 bytes gives an 8-chars-long secret (otherwise padded).
  * - node 2: “group by” means grouping with dashes, group by one means no breaking
  */
-export function GenerateBackupCodes(count: number, byteLength: number, groupBy: 1 | 4 | 8 = 1): string[] {
+export function GenerateBackupCodes(count: number, byteLength: number, groupBy: 1 | 4 | 8 = 1) {
 	return [...Array(count)].map(() => GenerateSingleBackupCode(byteLength, groupBy));
 }
 
@@ -209,7 +204,7 @@ export function GenerateBackupCodes(count: number, byteLength: number, groupBy: 
  * - note 1: 5 bytes gives an 8-chars-long secret (otherwise padded).
  * - node 2: “group by” means grouping with dashes, group by one means no breaking
  */
-export function GenerateSingleBackupCode(byteLength: number, groupBy: 1 | 4 | 8 = 1): string {
+export function GenerateSingleBackupCode(byteLength: number, groupBy: 1 | 4 | 8 = 1) {
 	const secret = GenerateRandomSecret(byteLength);
 
 	if (groupBy > 1) {
@@ -221,7 +216,7 @@ export function GenerateSingleBackupCode(byteLength: number, groupBy: 1 | 4 | 8 
 
 
 /**
- * estimates time left given a specific period.
+ * estimate time left for a specific period.
  */
 export function EstimateTimeLeft(period: Seconds = DefaultPeriod) {
 	return period - (Math.floor(GetSystemTime()) % period);
@@ -229,13 +224,18 @@ export function EstimateTimeLeft(period: Seconds = DefaultPeriod) {
 
 
 /**
- * estimates time left given a specific period.
+ * estimates allowed skew for a specific period and threshold.
+ *
+ * @param {Seconds} period - period duration to check against
+ * @param {Seconds} threshold - time window boundary proximity threshold
  */
-export function EstimateDrift(period: Seconds = DefaultPeriod, imprecision: Seconds = 10) {
+export function EstimateSkewAllowance(period: Seconds = DefaultPeriod, threshold: Seconds = 10) {
 	const timeLeft = EstimateTimeLeft(period);
+	const timeElapsed = period - timeLeft;
+
 	return {
-		driftRight: timeLeft < imprecision ? 1 : 0,
-		driftLeft: period - timeLeft < imprecision ? 1 : 0,
+		left: timeElapsed < threshold ? 1 : 0,
+		right: timeLeft < threshold ? 1 : 0,
 	}
 }
 
