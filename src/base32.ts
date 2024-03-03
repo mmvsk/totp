@@ -58,9 +58,7 @@ export function EncodeToBase32(inputBytes: Uint8Array, withPadding: boolean = tr
 
 		if (shiftIndex > 3) {
 			charIndex = currentByte & (0xff >> shiftIndex);
-
 			shiftIndex = (shiftIndex + 5) % 8;
-
 			charIndex = (0
 				| (charIndex << shiftIndex)
 				| ((i + 1 < inputBytes.length) ? inputBytes[i + 1] : 0) >> (8 - shiftIndex)

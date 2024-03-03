@@ -1,26 +1,31 @@
 import { EncodeToBase32, DecodeBase32 } from "./base32";
 
 
-/* types
+/* types and defaults
  * -------------------------------------------------------------------------- */
 
-type Long = number;
-type Base32 = string;
-type Digits = string;
+type LongInt = number;
+type Base32String = string;
+type DigitsString = `${number}`;
 type Seconds = number;
 
-type Algorithm = (
+export type DigitsLength = 6 | 7 | 8 | 9 | 10; // but only 6 and 8 may work
+export type Algorithm = (
 	| "SHA-1"
 	| "SHA-256"
 	| "SHA-512"
 );
+
+export const DefaultAlgorithm = "SHA-1" satisfies Algorithm;
+export const DefaultDigits = 6 satisfies DigitsLength;
+export const DefaultPeriod = 30;
 
 
 /* TOTP
  * -------------------------------------------------------------------------- */
 
 type TotpGenerationOptions = HotpGenerationOptions & Readonly<{
-	stepTime?: Seconds;
+	period?: Seconds;
 }>;
 
 type TotpVerificationOptions = (
@@ -30,26 +35,26 @@ type TotpVerificationOptions = (
 
 
 export async function GenerateTotpCode(
-	secret: Base32,
+	secret: Base32String,
 	options?: TotpGenerationOptions
 ):
-	Promise<Digits>
+	Promise<DigitsString>
 {
-	const stepTime = options?.stepTime ?? 30;
-	const counter = Math.floor(Date.now() / 1000 / stepTime);
+	const period = options?.period ?? DefaultPeriod;
+	const counter = Math.floor(Date.now() / 1000 / period);
 	return await GenerateHotpCode(counter, secret, options);
 }
 
 
 export async function VerifyTotpCode(
-	code: Digits,
-	secret: Base32,
+	code: DigitsString | string,
+	secret: Base32String,
 	options?: TotpVerificationOptions
 ):
 	Promise<boolean>
 {
-	const stepTime = options?.stepTime ?? 30;
-	const counter = Math.floor(Date.now() / 1000 / stepTime);
+	const period = options?.period ?? DefaultPeriod;
+	const counter = Math.floor(Date.now() / 1000 / period);
 	return await VerifyHotpCode(code, counter, secret, options);
 }
 
@@ -58,7 +63,7 @@ export async function VerifyTotpCode(
  * -------------------------------------------------------------------------- */
 
 type HotpGenerationOptions = Readonly<{
-	length?: 6 | 7 | 8 | 9 | 10; // number of digits
+	digits?: DigitsLength;
 	algorithm?: Algorithm;
 }>;
 
@@ -70,14 +75,14 @@ type HotpVerificationOptions = HotpGenerationOptions & Readonly<{
 
 
 export async function GenerateHotpCode(
-	counter: Long,
-	secret: Base32,
+	counter: LongInt,
+	secret: Base32String,
 	options?: HotpGenerationOptions
 ):
-	Promise<Digits>
+	Promise<DigitsString>
 {
-	const length = options?.length ?? 6;
-	const algorithm = options?.algorithm ?? "SHA-1";
+	const digits = options?.digits ?? DefaultDigits;
+	const algorithm = options?.algorithm ?? DefaultAlgorithm;
 	const counterState = GetCounterState(counter);
 
 	const keyBytes = DecodeBase32(secret);
@@ -92,16 +97,16 @@ export async function GenerateHotpCode(
 		| (hashBytes[offset + 3] & 0xff)
 	);
 
-	const code = fullCode.toString(10).slice(-length).padStart(length, "0");
+	const code = fullCode.toString(10).slice(-digits).padStart(digits, "0");
 
-	return code;
+	return code as DigitsString;
 };
 
 
 export async function VerifyHotpCode(
-	code: Digits,
-	counter: Long,
-	secret: Base32,
+	code: DigitsString | string,
+	counter: LongInt,
+	secret: Base32String,
 	options?: HotpVerificationOptions
 ):
 	Promise<boolean>
@@ -115,7 +120,7 @@ export async function VerifyHotpCode(
 	const steps = [counter, ...InterleaveArrays(leftSteps, rightSteps)];
 
 	for (let i = 0; i < steps.length; i++) {
-		if (await GenerateHotpCode(i, secret, options) === code) {
+		if (await GenerateHotpCode(steps[i], secret, options) === code) {
 			return true;
 		}
 	}
@@ -133,7 +138,7 @@ export async function VerifyHotpCode(
  * - note 1: 5 bytes gives an 8-chars-long secret (otherwise padded).
  * - node 2: in the QR-code for authenticator apps, GitHub gives a secret of 10 bytes
  */
-export function GenerateRandomSecret(byteLength: number): Base32 {
+export function GenerateRandomSecret(byteLength: number): Base32String {
 	const secretBytes = crypto.getRandomValues(new Uint8Array(byteLength));
 	return EncodeToBase32(secretBytes, false);
 };
@@ -144,11 +149,29 @@ export function GenerateRandomSecret(byteLength: number): Base32 {
  *
  * github example: issuer=GitHub, account=Github:[username], secret is 10 bytes long
  */
-export function GenerateTotpUrl(issuer: string, account: string, secret: Base32) {
+export function GenerateTotpUrl(
+	secret: Base32String,
+	issuer: string,
+	user: string,
+	options?: Readonly<{
+		period?: Seconds;
+		digits?: DigitsLength;
+		algoritm?: Algorithm;
+	}>
+) {
 	const encodedIssuer = encodeURIComponent(issuer);
-	const encodedAccount = encodeURIComponent(account);
+	const encodedAccount = encodeURIComponent(`${issuer}:${user}`);
 
-	return `otpauth://totp/${encodedAccount}?secret=${secret}&issuer=${encodedIssuer}`;
+	const algorithmOption = options?.algoritm ? `&algorithm=${options.algoritm.replace(/-/g, "")}` : "";
+	const digitsOption = options?.digits ? `&digits=${options.digits}` : "";
+	const periodOption = options?.period ? `&period=${options.period}` : "";
+
+	return (
+		`otpauth://totp/${encodedAccount}?secret=${secret}&issuer=${encodedIssuer}`
+		+ algorithmOption
+		+ digitsOption
+		+ periodOption
+	);
 }
 
 
@@ -177,6 +200,26 @@ export function GenerateSingleBackupCode(byteLength: number, groupBy: 1 | 4 | 8 
 	}
 
 	return secret;
+}
+
+
+/**
+ * estimates time left given a specific period.
+ */
+export function EstimateTimeLeft(period: Seconds = DefaultPeriod) {
+	return period - (Math.floor(Date.now() / 1000) % period);
+}
+
+
+/**
+ * estimates time left given a specific period.
+ */
+export function EstimateDrift(period: Seconds = DefaultPeriod, imprecision: Seconds = 10) {
+	const timeLeft = EstimateTimeLeft(period);
+	return {
+		driftLeft: timeLeft < imprecision ? 1 : 0,
+		driftRight: period - timeLeft < imprecision ? 1 : 0,
+	}
 }
 
 
@@ -215,7 +258,7 @@ async function HashCounterState(counterState: Uint8Array, secretKey: Uint8Array,
 
 
 function InterleaveArrays<T extends {} | null>(...arrays: T[][]) {
-	return (
+	return <T[]>(
 		[...Array(Math.max(...arrays.map(a => a.length))).keys()]
 			.map(i => arrays.map(a => a[i] ?? undefined))
 			.flat()
