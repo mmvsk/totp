@@ -2,6 +2,7 @@ import {
 	GenerateTotpUrl,
 	GenerateTotpCode,
 	GenerateRandomSecret,
+	GenerateBackupCodes,
 	VerifyTotpCode,
 	DefaultAlgorithm,
 	DefaultDigits,
@@ -17,6 +18,7 @@ console.log();
 console.log("    new <issuer> <username> [<digits>] [<period>] [<algorithm>]");
 console.log("    code [<secret-key>] [<digits>] [<period>] [<algorithm>]");
 console.log("    verify <otp-code> [<secret-key>] [<period>] [<algorithm>]");
+console.log("    backup [<bytes>] [<group-by>] [<count>]");
 console.log("    exit");
 console.log();
 
@@ -109,6 +111,16 @@ while (true) {
 			} else {
 				console.error("invalid");
 				console.log({ code, secret, period, algorithm })
+			}
+		} break;
+
+		case "backup": {
+			const byteLength = param[0] ? parseInt(param[0]) : 10;
+			const groupBy = param[1] ? parseInt(param[1]) as 1 | 4 | 8 : 1;
+			const count = param[2] ? parseInt(param[2]) : 4;
+
+			for (const code of GenerateBackupCodes(count, byteLength, groupBy)) {
+				console.log(code);
 			}
 		} break;
 
