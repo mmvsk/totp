@@ -8,10 +8,10 @@ import {
 	DefaultDigits,
 	DefaultPeriod,
 	EstimateTimeLeft,
-	EstimateDrift,
+	EstimateSkewAllowance,
 	type DigitsLength,
 	type Algorithm,
-} from "./lib/totp";
+} from "./lib";
 
 console.log("commands:");
 console.log();
@@ -100,7 +100,7 @@ while (true) {
 			}
 
 			const valid = await VerifyTotpCode(code, secret, {
-				...EstimateDrift(period, 10),
+				...EstimateSkewAllowance(period, 10),
 				algorithm,
 				period,
 			});
