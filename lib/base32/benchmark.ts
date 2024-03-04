@@ -1,60 +1,67 @@
-import { EncodeToBase32 as EncodeA, DecodeBase32 as DecodeA } from "./lib/base32";
-import { EncodeToBase32 as EncodeB, DecodeBase32 as DecodeB } from "./lib/altBase32";
+import { EncodeToBase32 as EncodeA, DecodeBase32 as DecodeA } from "./for-short";
+import { EncodeToBase32 as EncodeB, DecodeBase32 as DecodeB } from "./for-long";
+import { EncodeToBase32 as EncodeX, DecodeBase32 as DecodeX } from "./index";
 
 
-//const data = crypto.getRandomValues(new Uint8Array(641));
-//const a = DecodeA(EncodeA(data));
-//const b = DecodeB(EncodeB(data));
-//if (a[0] !== b[0]) {
-	//throw new Error("damn");
-//}
+type Encoder = (inputBytes: Uint8Array) => string;
+type Decoder = (base32String: string) => Uint8Array;
+type Codec = Readonly<{ encode: Encoder; decode: Decoder }>;
 
 
-//type Encoder = (inputBytes: Uint8Array) => string;
-//type Decoder = (base32String: string) => Uint8Array;
-//type Codec = Readonly<{ encode: Encoder; decode: Decoder }>;
+const inputs = CreateInputs();
 
 
-//function CreateInput(bytes: number, count: number = 10) {
-	//return [...Array(count)].map(() => crypto.getRandomValues(new Uint8Array(bytes)));
-//}
+function CreateInputs() {
+	const inputs = new Map<number, Uint8Array[]>();
 
-//const inputs = new Map<number, Uint8Array[]>();
-//for (let i = 0; i < 12; i++) {
-	//const bytes = 2 ** i;
-	//inputs.set(bytes, CreateInput(bytes, 10));
-//}
+	const add = (bytes: number, count: number = 10) => {
+		inputs.set(bytes, [...Array(count)].map(() => crypto.getRandomValues(new Uint8Array(bytes))));
+	}
 
+	for (let i = 0; i < 12; i++) {
+		add(2 ** i);
 
-//function Time(runnable: () => void) {
-	//const startTime = performance.now();
-	//runnable();
-	//const endTime = performance.now();
-	//return endTime - startTime;
-//}
+		if (i === 3) {
+			// add a 10-byte input, as it's common for TOTPs
+			add(10);
+		}
+	}
 
-
-//function WarmUp() {
-	//for (let i = 0; i < 1e3; i++) {
-		//for (const input of inputs.values()) {
-			//for (const data of input) {
-				//DecodeA(EncodeA(data));
-				//DecodeB(EncodeB(data));
-			//}
-		//}
-	//}
-//}
+	return inputs;
+}
 
 
-//function Compare(name: string, runnable: (codec: Codec) => void) {
-	//const aTime = Time(() => runnable({ encode: EncodeA, decode: DecodeA }));
-	//const bTime = Time(() => runnable({ encode: EncodeB, decode: DecodeB }));
+function Time(runnable: () => void) {
+	const startTime = performance.now();
+	runnable();
+	const endTime = performance.now();
+	return endTime - startTime;
+}
 
-	//const faster = aTime < bTime ? "A" : "B";
-	//const ratio = Math.max(aTime, bTime) / Math.min(aTime, bTime);
 
-	//console.log(`${name}: A ${aTime.toFixed(0)} ms, B ${bTime.toFixed(0)} ms, ${faster} is ${ratio.toFixed(1)}x faster (+${(100 * (ratio - 1)).toFixed(0)}%)`);
-//}
+function WarmUp() {
+	for (let i = 0; i < 1e3; i++) {
+		for (const input of inputs.values()) {
+			for (const data of input) {
+				DecodeA(EncodeA(data));
+				DecodeB(EncodeB(data));
+				DecodeX(EncodeX(data));
+			}
+		}
+	}
+}
+
+
+function Compare(name: string, runnable: (codec: Codec) => void) {
+	const aTime = Time(() => runnable({ encode: EncodeA, decode: DecodeA }));
+	const bTime = Time(() => runnable({ encode: EncodeB, decode: DecodeB }));
+	const xTime = Time(() => runnable({ encode: EncodeX, decode: DecodeX }));
+
+	const faster = aTime < bTime ? "A" : "B";
+	const ratio = Math.max(aTime, bTime) / Math.min(aTime, bTime);
+
+	console.log(`${name}: A ${aTime.toFixed(0)} ms, B ${bTime.toFixed(0)} ms, X ${xTime.toFixed(0)} ms, ${faster} is ${ratio.toFixed(1)}x faster (+${(100 * (ratio - 1)).toFixed(0)}%)`);
+}
 
 
 function VerifyAlgorithms() {
@@ -98,12 +105,6 @@ function VerifyAlgorithms() {
 	}
 
 	for (let bytes = 0; bytes < 10_000; bytes++) {
-
-		if (bytes > 641) {
-			console.log("ok");
-			process.exit(0);
-		}
-
 		const input = crypto.getRandomValues(new Uint8Array(bytes));
 
 		const encodedA = EncodeA(input, false);
@@ -131,30 +132,33 @@ function VerifyAlgorithms() {
 		}
 	}
 
-	console.log("algorithms ok");
+	console.log("algorithms check: passed");
+	console.log();
 }
 
 
 VerifyAlgorithms();
 
-//WarmUp();
+WarmUp();
 
-//for (const [bytes, input] of inputs.entries()) {
-	//Compare(`encoding ${bytes} bytes`, codec => {
-		//for (let i = 0; i < 1e3; i++) {
-			//for (const data of input) {
-				//codec.encode(data);
-			//}
-		//}
-	//});
+for (const [bytes, input] of inputs.entries()) {
+	const iterations = 1e5 / bytes;
 
-	//Compare(`decoding ${bytes} bytes`, codec => {
-		//for (let i = 0; i < 1e3; i++) {
-			//for (const data of input) {
-				//codec.decode(codec.encode(data));
-			//}
-		//}
-	//});
+	Compare(`encoding ${bytes} bytes`, codec => {
+		for (let i = 0; i < iterations; i++) {
+			for (const data of input) {
+				codec.encode(data);
+			}
+		}
+	});
 
-	//console.log();
-//}
+	Compare(`decoding ${bytes} bytes`, codec => {
+		for (let i = 0; i < iterations; i++) {
+			for (const data of input) {
+				codec.decode(codec.encode(data));
+			}
+		}
+	});
+
+	console.log();
+}
