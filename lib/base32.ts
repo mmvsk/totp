@@ -24,8 +24,10 @@
  * Original repository: https://github.com/chrisumbel/thirty-two
  *
  * Modified by Max Ruman in 2024.
-*/
+ */
 
+
+/** RFC 4648 */
 const CharTable = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
 
 const PaddingChar = "=".charCodeAt(0); // 0x3d
@@ -94,6 +96,8 @@ export function EncodeToBase32(inputBytes: Uint8Array, withPadding: boolean = tr
 
 export function DecodeBase32(base32String: string): Uint8Array {
 	const encoded = new TextEncoder().encode(base32String);
+	//Buffer.from(base32String);
+
 	const decoded = new Uint8Array(Math.ceil(encoded.length * 5 / 8));
 
 	let plainChar = 0;
