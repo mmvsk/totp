@@ -47,7 +47,7 @@ const ByteTable = [
 
 
 export function EncodeToBase32(inputBytes: Uint8Array, withPadding: boolean = true): string {
-	const outputLength = 8 * (Math.floor(inputBytes.length / 5) + (inputBytes.length % 5 === 0 ? 0 : 1));
+	const outputLength = 8 * Math.ceil(inputBytes.length / 5);
 	const outputChars = new Uint8Array(outputLength);
 
 	let i = 0;

@@ -1,6 +1,5 @@
-import { EncodeToBase32 as EncodeA, DecodeBase32 as DecodeA } from "./for-short";
-import { EncodeToBase32 as EncodeB, DecodeBase32 as DecodeB } from "./for-long";
-import { EncodeToBase32 as EncodeX, DecodeBase32 as DecodeX } from "./index";
+import { EncodeToBase32 as EncodeA, DecodeBase32 as DecodeA } from "./for-long";
+import { EncodeToBase32 as EncodeB, DecodeBase32 as DecodeB } from "./for-short";
 
 
 type Encoder = (inputBytes: Uint8Array) => string;
@@ -45,7 +44,6 @@ function WarmUp() {
 			for (const data of input) {
 				DecodeA(EncodeA(data));
 				DecodeB(EncodeB(data));
-				DecodeX(EncodeX(data));
 			}
 		}
 	}
@@ -55,12 +53,11 @@ function WarmUp() {
 function Compare(name: string, runnable: (codec: Codec) => void) {
 	const aTime = Time(() => runnable({ encode: EncodeA, decode: DecodeA }));
 	const bTime = Time(() => runnable({ encode: EncodeB, decode: DecodeB }));
-	const xTime = Time(() => runnable({ encode: EncodeX, decode: DecodeX }));
 
 	const faster = aTime < bTime ? "A" : "B";
 	const ratio = Math.max(aTime, bTime) / Math.min(aTime, bTime);
 
-	console.log(`${name}: A ${aTime.toFixed(0)} ms, B ${bTime.toFixed(0)} ms, X ${xTime.toFixed(0)} ms, ${faster} is ${ratio.toFixed(1)}x faster (+${(100 * (ratio - 1)).toFixed(0)}%)`);
+	console.log(`${name}: A ${aTime.toFixed(0)} ms, B ${bTime.toFixed(0)} ms, ${faster} is ${ratio.toFixed(1)}x faster (+${(100 * (ratio - 1)).toFixed(0)}%)`);
 }
 
 
@@ -142,7 +139,7 @@ VerifyAlgorithms();
 WarmUp();
 
 for (const [bytes, input] of inputs.entries()) {
-	const iterations = 1e5 / bytes;
+	const iterations = 2 * 1e5 / bytes;
 
 	Compare(`encoding ${bytes} bytes`, codec => {
 		for (let i = 0; i < iterations; i++) {
