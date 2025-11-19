@@ -1,12 +1,36 @@
 {
   "name": "totp",
-  "module": "index.ts",
+  "version": "1.0.0",
+  "description": "A lightweight TOTP/HOTP implementation with Base32 encoding, backup codes, and Luhn checksum utilities",
+  "module": "lib/index.ts",
+  "main": "lib/index.ts",
   "type": "module",
   "scripts": {
     "play": "bun run play.ts"
   },
+  "keywords": [
+    "totp",
+    "hotp",
+    "otp",
+    "2fa",
+    "two-factor",
+    "authentication",
+    "base32",
+    "authenticator",
+    "otpauth",
+    "mfa"
+  ],
+  "author": "",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": ""
+  },
   "devDependencies": {
     "@types/bun": "^1.3.2",
     "typescript": "^6.0.0-dev.20251119"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }

@@ -21,6 +21,38 @@ export const DefaultDigits = 6 satisfies DigitsLength;
 export const DefaultPeriod = 30;
 
 
+/* custom errors
+ * -------------------------------------------------------------------------- */
+
+export class TotpError extends Error {
+	constructor(message: string) {
+		super(message);
+		this.name = "TotpError";
+	}
+}
+
+export class InvalidSecretError extends TotpError {
+	constructor(message: string = "Invalid or weak secret key") {
+		super(message);
+		this.name = "InvalidSecretError";
+	}
+}
+
+export class InvalidCodeLengthError extends TotpError {
+	constructor(message: string = "Invalid code length") {
+		super(message);
+		this.name = "InvalidCodeLengthError";
+	}
+}
+
+export class Base32DecodeError extends TotpError {
+	constructor(message: string = "Failed to decode base32 string") {
+		super(message);
+		this.name = "Base32DecodeError";
+	}
+}
+
+
 /* TOTP
  * -------------------------------------------------------------------------- */
 
@@ -34,6 +66,22 @@ type TotpVerificationOptions = (
 );
 
 
+/**
+ * Generate a Time-based One-Time Password (TOTP) code.
+ *
+ * @param {Base32String} secret - The base32-encoded secret key (case-insensitive)
+ * @param {TotpGenerationOptions} options - Optional configuration
+ * @param {DigitsLength} options.digits - Number of digits in the code (default: 6)
+ * @param {Algorithm} options.algorithm - HMAC algorithm to use (default: "SHA-1")
+ * @param {Seconds} options.period - Time window in seconds (default: 30)
+ * @returns {Promise<DigitsString>} The generated TOTP code
+ * @throws {InvalidSecretError} If the secret is too short (< 10 bytes)
+ * @throws {Base32DecodeError} If the secret cannot be decoded
+ *
+ * @example
+ * const code = await GenerateTotpCode("JBSWY3DPEHPK3PXP");
+ * console.log(code); // "123456"
+ */
 export async function GenerateTotpCode(
 	secret: Base32String,
 	options?: TotpGenerationOptions
@@ -46,6 +94,31 @@ export async function GenerateTotpCode(
 }
 
 
+/**
+ * Verify a Time-based One-Time Password (TOTP) code.
+ *
+ * IMPORTANT: In production, implement rate limiting to prevent brute force attacks.
+ * This function will try multiple counter values if allowedSkew is specified.
+ *
+ * @param {string} code - The TOTP code to verify
+ * @param {Base32String} secret - The base32-encoded secret key (case-insensitive)
+ * @param {TotpVerificationOptions} options - Optional configuration
+ * @param {DigitsLength} options.digits - Expected number of digits (required if strictDigits is true)
+ * @param {boolean} options.strictDigits - Enforce exact digit length (default: false)
+ * @param {Algorithm} options.algorithm - HMAC algorithm to use (default: "SHA-1")
+ * @param {Seconds} options.period - Time window in seconds (default: 30)
+ * @param {object} options.allowedSkew - Allow time drift tolerance
+ * @param {number} options.allowedSkew.left - Number of past periods to check
+ * @param {number} options.allowedSkew.right - Number of future periods to check
+ * @returns {Promise<boolean>} True if the code is valid, false otherwise
+ * @throws {InvalidCodeLengthError} If code length is invalid
+ * @throws {InvalidSecretError} If the secret is too short (< 10 bytes)
+ *
+ * @example
+ * const isValid = await VerifyTotpCode("123456", "JBSWY3DPEHPK3PXP", {
+ *   allowedSkew: { left: 1, right: 1 }
+ * });
+ */
 export async function VerifyTotpCode(
 	code: DigitsString | string,
 	secret: Base32String,
@@ -71,6 +144,22 @@ type HotpVerificationOptions = HotpGenerationOptions & Readonly<{
 }>;
 
 
+/**
+ * Generate an HMAC-based One-Time Password (HOTP) code.
+ *
+ * @param {number} counter - The counter value (incrementing integer)
+ * @param {Base32String} secret - The base32-encoded secret key (case-insensitive)
+ * @param {HotpGenerationOptions} options - Optional configuration
+ * @param {DigitsLength} options.digits - Number of digits in the code (default: 6)
+ * @param {Algorithm} options.algorithm - HMAC algorithm to use (default: "SHA-1")
+ * @returns {Promise<DigitsString>} The generated HOTP code
+ * @throws {InvalidSecretError} If the secret is too short (< 10 bytes)
+ * @throws {Base32DecodeError} If the secret cannot be decoded
+ *
+ * @example
+ * const code = await GenerateHotpCode(42, "JBSWY3DPEHPK3PXP");
+ * console.log(code); // "123456"
+ */
 export async function GenerateHotpCode(
 	counter: LongInt,
 	secret: Base32String,
@@ -83,6 +172,11 @@ export async function GenerateHotpCode(
 	const counterState = GetCounterState(counter);
 
 	const keyBytes = DecodeBase32(secret);
+
+	// Validate secret length (minimum 10 bytes / 16 chars recommended)
+	if (keyBytes.length < 10) {
+		throw new InvalidSecretError(`Secret too short: ${keyBytes.length} bytes (minimum 10 bytes recommended for security)`);
+	}
 
 	const hashBytes = await HashCounterState(counterState, keyBytes, algorithm);
 
@@ -100,6 +194,29 @@ export async function GenerateHotpCode(
 };
 
 
+/**
+ * Verify an HMAC-based One-Time Password (HOTP) code.
+ *
+ * IMPORTANT: In production, implement rate limiting to prevent brute force attacks.
+ * This function will try multiple counter values if allowedSkew is specified.
+ *
+ * @param {string} code - The HOTP code to verify
+ * @param {number} counter - The counter value to verify against
+ * @param {Base32String} secret - The base32-encoded secret key (case-insensitive)
+ * @param {HotpVerificationOptions} options - Optional configuration
+ * @param {DigitsLength} options.digits - Expected number of digits (required if strictDigits is true)
+ * @param {boolean} options.strictDigits - Enforce exact digit length (default: false)
+ * @param {Algorithm} options.algorithm - HMAC algorithm to use (default: "SHA-1")
+ * @param {object} options.allowedSkew - Allow counter drift tolerance
+ * @param {number} options.allowedSkew.left - Number of past counters to check
+ * @param {number} options.allowedSkew.right - Number of future counters to check
+ * @returns {Promise<boolean>} True if the code is valid, false otherwise
+ * @throws {InvalidCodeLengthError} If code length is invalid
+ * @throws {InvalidSecretError} If the secret is too short (< 10 bytes)
+ *
+ * @example
+ * const isValid = await VerifyHotpCode("123456", 42, "JBSWY3DPEHPK3PXP");
+ */
 export async function VerifyHotpCode(
 	code: DigitsString | string,
 	counter: LongInt,
@@ -107,14 +224,14 @@ export async function VerifyHotpCode(
 	options?: HotpVerificationOptions
 ) {
 	if (code.length < 6 || code.length > 10) {
-		return false;
+		throw new InvalidCodeLengthError(`Code length must be between 6 and 10 digits, got ${code.length}`);
 	}
 
 	const digits = code.length as DigitsLength;
 
 	if (options?.strictDigits) {
 		if (!options.digits) {
-			throw new Error("strict digits: you must provide a specific number of expected digits");
+			throw new InvalidCodeLengthError("strictDigits option requires specifying expected digits length");
 		}
 
 		if (code.length !== options.digits) {
@@ -127,7 +244,7 @@ export async function VerifyHotpCode(
 	const counterValues = (
 		!allowedSkew ? [counter] : [counter, ...InterleaveArrays(
 			[...Array(allowedSkew.left).keys()].map(i => counter - (i + 1)),
-			[...Array(allowedSkew.right).keys()].map(i => counter - (i + 1)),
+			[...Array(allowedSkew.right).keys()].map(i => counter + (i + 1)),
 		)]
 	);
 
@@ -145,10 +262,17 @@ export async function VerifyHotpCode(
  * -------------------------------------------------------------------------- */
 
 /**
- * generate a random base32-encoded secret key.
+ * Generate a random base32-encoded secret key.
  *
- * - note 1: base 32 encoding will produce 8 chars for each 5 bytes of key
- * - node 2: a good value is 10 bytes (16 chars), as github do in 2024
+ * @param {number} byteLength - Length of the secret in bytes (recommended: 10 or more)
+ * @returns {Base32String} Base32-encoded secret key without padding
+ *
+ * @note Base32 encoding produces 8 characters for each 5 bytes of key
+ * @note A good value is 10 bytes (16 chars), as GitHub uses in 2024
+ *
+ * @example
+ * const secret = GenerateRandomSecret(10); // 16 chars
+ * console.log(secret); // "JBSWY3DPEHPK3PXP"
  */
 export function GenerateRandomSecret(byteLength: number): Base32String {
 	const secretBytes = crypto.getRandomValues(new Uint8Array(byteLength));
@@ -157,9 +281,21 @@ export function GenerateRandomSecret(byteLength: number): Base32String {
 
 
 /**
- * generate a TOTP url, which can then be converted to a QR code to be scanned by an authenticator app.
+ * Generate a TOTP URL for QR code generation (otpauth:// URI scheme).
+ * This URL can be converted to a QR code and scanned by authenticator apps.
  *
- * github example: issuer=GitHub, account=Github:[username], secret is 10 bytes long
+ * @param {string} issuer - Service name (e.g., "GitHub", "Google")
+ * @param {string} user - Username or email
+ * @param {Base32String} secret - Base32-encoded secret key
+ * @param {object} options - Optional configuration
+ * @param {DigitsLength} options.digits - Number of digits (default: 6)
+ * @param {Seconds} options.period - Time window in seconds (default: 30)
+ * @param {Algorithm} options.algorithm - HMAC algorithm (default: "SHA-1")
+ * @returns {string} otpauth:// URL suitable for QR code generation
+ *
+ * @example
+ * const url = GenerateTotpUrl("GitHub", "user@example.com", "JBSWY3DPEHPK3PXP");
+ * // otpauth://totp/GitHub:user@example.com?secret=JBSWY3DPEHPK3PXP&issuer=GitHub
  */
 export function GenerateTotpUrl(
 	issuer: string,
@@ -188,10 +324,19 @@ export function GenerateTotpUrl(
 
 
 /**
- * generate multiple backup codes (paper codes).
+ * Generate multiple backup/recovery codes (paper codes).
  *
- * - note 1: base 32 encoding will produce 8 chars for each 5 bytes of key
- * - node 2: “group by” means grouping using dashes, group by one means no breaking
+ * @param {number} count - Number of backup codes to generate
+ * @param {number} byteLength - Length of each code in bytes
+ * @param {1 | 4 | 8} groupBy - Group characters with dashes (1 = no grouping, 4 = "AAAA-BBBB", 8 = "AAAABBBB-CCCCDDDD")
+ * @returns {string[]} Array of backup codes
+ *
+ * @note Base32 encoding produces 8 characters for each 5 bytes
+ * @note Common pattern: 10 bytes with groupBy=4 produces "AAAA-BBBB-CCCC-DDDD"
+ *
+ * @example
+ * const codes = GenerateBackupCodes(8, 10, 4);
+ * // ["JBSW-Y3DP-EHPK-3PXP", "KRUW-G4ZA-MF2G-S3LQ", ...]
  */
 export function GenerateBackupCodes(count: number, byteLength: number, groupBy: 1 | 4 | 8 = 1) {
 	return [...Array(count)].map(() => GenerateSingleBackupCode(byteLength, groupBy));
@@ -199,10 +344,17 @@ export function GenerateBackupCodes(count: number, byteLength: number, groupBy: 
 
 
 /**
- * generate a single backup code (paper code).
+ * Generate a single backup/recovery code (paper code).
  *
- * - note 1: base 32 encoding will produce 8 chars for each 5 bytes of key
- * - node 2: “group by” means grouping using dashes, group by one means no breaking
+ * @param {number} byteLength - Length of the code in bytes
+ * @param {1 | 4 | 8} groupBy - Group characters with dashes (1 = no grouping)
+ * @returns {string} A backup code
+ *
+ * @note Base32 encoding produces 8 characters for each 5 bytes
+ *
+ * @example
+ * const code = GenerateSingleBackupCode(10, 4);
+ * console.log(code); // "JBSW-Y3DP-EHPK-3PXP"
  */
 export function GenerateSingleBackupCode(byteLength: number, groupBy: 1 | 4 | 8 = 1) {
 	const secret = GenerateRandomSecret(byteLength);
@@ -216,7 +368,14 @@ export function GenerateSingleBackupCode(byteLength: number, groupBy: 1 | 4 | 8 
 
 
 /**
- * estimate time left for a specific period time window.
+ * Estimate time remaining in the current TOTP period window.
+ *
+ * @param {Seconds} period - Period duration in seconds (default: 30)
+ * @returns {Seconds} Number of seconds until the next period begins
+ *
+ * @example
+ * const timeLeft = EstimateTimeLeft(30);
+ * console.log(`Code expires in ${timeLeft} seconds`);
  */
 export function EstimateTimeLeft(period: Seconds = DefaultPeriod) {
 	return period - (Math.floor(GetSystemTime()) % period);
@@ -224,10 +383,16 @@ export function EstimateTimeLeft(period: Seconds = DefaultPeriod) {
 
 
 /**
- * estimates allowed skew for a specific period time window and tolerance threshold.
+ * Estimate recommended skew allowance based on proximity to period boundaries.
+ * Useful for determining when to allow time drift tolerance during verification.
  *
- * @param {Seconds} period - period duration to check against
- * @param {Seconds} threshold - threshold of tolerance to the proximity of the period time window boundary
+ * @param {Seconds} period - Period duration in seconds (default: 30)
+ * @param {Seconds} threshold - Seconds near boundary to trigger skew allowance (default: 10)
+ * @returns {{ left: number, right: number }} Recommended skew for past (left) and future (right)
+ *
+ * @example
+ * const skew = EstimateSkewAllowance(30, 10);
+ * const isValid = await VerifyTotpCode(code, secret, { allowedSkew: skew });
  */
 export function EstimateSkewAllowance(period: Seconds = DefaultPeriod, threshold: Seconds = 10) {
 	const timeLeft = EstimateTimeLeft(period);

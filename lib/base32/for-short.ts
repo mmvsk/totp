@@ -65,7 +65,7 @@ export function EncodeToBase32(inputBytes: Uint8Array, withPadding: boolean = tr
 
 
 export function DecodeBase32(base32String: string): Uint8Array {
-	const input = base32String.replace(/=+$/, "");
+	const input = base32String.toUpperCase().replace(/=+$/, "");
 	const decoded = new Uint8Array((input.length * 5 / 8) | 0);
 
 	let bits = 0;
