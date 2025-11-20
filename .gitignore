@@ -1,3 +1,5 @@
+/.dev
+
 # Based on https://raw.githubusercontent.com/github/gitignore/main/Node.gitignore
 
 # Logs
@@ -173,3 +175,32 @@ dist
 
 # Finder (MacOS) folder config
 .DS_Store
+
+# Bun specific
+bun.lockb
+bun.lock
+
+# Build output
+dist/
+build/
+*.js
+*.js.map
+*.d.ts
+!examples/*.js
+
+# Test output
+.test-results/
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS
+.DS_Store
+Thumbs.db

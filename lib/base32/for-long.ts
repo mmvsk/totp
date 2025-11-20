@@ -110,11 +110,15 @@ export function DecodeBase32(base32String: string): Uint8Array {
 
 		const encodedByte = encoded[i] - 0x30;
 
-		if (encodedByte >= ByteTable.length) {
+		if (encodedByte >= ByteTable.length || encodedByte < 0) {
 			throw new Error("Invalid input: not a valid base32-encoded string");
 		}
 
 		const plainDigit = ByteTable[encodedByte];
+
+		if (plainDigit === 0xff) {
+			throw new Error(`Invalid character found: ${String.fromCharCode(encoded[i])}`);
+		}
 
 		if (shiftIndex <= 3) {
 			shiftIndex = (shiftIndex + 5) % 8;
