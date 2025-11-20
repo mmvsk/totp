@@ -6,7 +6,6 @@
  */
 
 import { GenerateBackupCodes, GenerateSingleBackupCode } from "@/totp";
-import { CalculateLuhnChecksum } from "@/luhn";
 
 console.log("=== Backup Code Generation ===\n");
 
@@ -84,22 +83,3 @@ console.log(`4-char groups: ${grouped4}`);
 // 8-char groups
 const grouped8 = GenerateSingleBackupCode(10, 8);
 console.log(`8-char groups: ${grouped8}`);
-
-console.log("\n=== Adding Luhn Checksum ===\n");
-console.log("Optional: Add checksum for typo detection\n");
-
-function generateBackupCodeWithChecksum(byteLength: number): string {
-	// Generate base code (ungrouped)
-	const baseCode = GenerateSingleBackupCode(byteLength, 1);
-
-	// Calculate checksum on the numeric representation
-	// Note: This is a simplified example; in production you might
-	// convert base32 to numeric or use a different approach
-	const checksum = CalculateLuhnChecksum(baseCode.slice(0, 10) as `${number}`);
-
-	return `${baseCode}-${checksum}`;
-}
-
-const codeWithChecksum = generateBackupCodeWithChecksum(10);
-console.log(`Code with checksum: ${codeWithChecksum}`);
-console.log("Checksum helps detect typos when users manually enter codes");
