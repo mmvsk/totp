@@ -249,7 +249,8 @@ export async function VerifyHotpCode(
 	);
 
 	for (let i = 0; i < counterValues.length; i++) {
-		if (await GenerateHotpCode(counterValues[i]!, secret, { ...options, digits }) === code) {
+		const generatedCode = await GenerateHotpCode(counterValues[i]!, secret, { ...options, digits });
+		if (timingSafeEqual(generatedCode, code)) {
 			return true;
 		}
 	}
@@ -407,6 +408,28 @@ export function EstimateSkewAllowance(period: Seconds = DefaultPeriod, threshold
 
 /* internal
  * -------------------------------------------------------------------------- */
+
+/**
+ * Constant-time string comparison to prevent timing attacks.
+ * Always compares all characters regardless of early mismatches.
+ *
+ * @param a - First string to compare
+ * @param b - Second string to compare
+ * @returns true if strings are equal, false otherwise
+ */
+function timingSafeEqual(a: string, b: string): boolean {
+	if (a.length !== b.length) {
+		return false;
+	}
+
+	let result = 0;
+	for (let i = 0; i < a.length; i++) {
+		result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+	}
+
+	return result === 0;
+}
+
 
 function GetSystemTime() {
 	return Date.now() / 1000;
