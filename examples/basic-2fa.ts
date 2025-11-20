@@ -13,7 +13,7 @@ import {
 	GenerateTotpCode,
 	VerifyTotpCode,
 	EstimateTimeLeft,
-} from "../src";
+} from "@/totp";
 
 async function setup2FA(issuer: string, username: string) {
 	console.log("=== 2FA Setup ===\n");

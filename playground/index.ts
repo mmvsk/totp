@@ -11,7 +11,7 @@ import {
 	EstimateSkewAllowance,
 	type DigitsLength,
 	type Algorithm,
-} from "@";
+} from "@/totp";
 
 console.log("commands:");
 console.log();

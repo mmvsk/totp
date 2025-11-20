@@ -5,7 +5,7 @@ import {
 	GenerateSingleBackupCode,
 	EstimateTimeLeft,
 	EstimateSkewAllowance,
-} from "../src";
+} from "@/totp";
 
 describe("TOTP URL Generation", () => {
 	test("generates valid otpauth URL", () => {

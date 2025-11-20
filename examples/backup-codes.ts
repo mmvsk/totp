@@ -5,8 +5,8 @@
  * for account recovery when users lose their 2FA device.
  */
 
-import { GenerateBackupCodes, GenerateSingleBackupCode } from "../src";
-import { CalculateLuhnChecksum } from "../src/luhn";
+import { GenerateBackupCodes, GenerateSingleBackupCode } from "@/totp";
+import { CalculateLuhnChecksum } from "@/luhn";
 
 console.log("=== Backup Code Generation ===\n");
 

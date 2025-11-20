@@ -1,4 +1,4 @@
-import { EncodeToBase32, DecodeBase32 } from "./base32";
+import { EncodeToBase32, DecodeBase32 } from "@/base32";
 
 
 /* types and defaults

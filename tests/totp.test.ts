@@ -7,7 +7,7 @@ import {
 	GenerateRandomSecret,
 	InvalidSecretError,
 	InvalidCodeLengthError,
-} from "../src";
+} from "@/totp";
 
 describe("TOTP", () => {
 	const testSecret = "JBSWY3DPEHPK3PXP"; // "Hello!" in base32

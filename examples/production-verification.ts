@@ -13,7 +13,7 @@ import {
 	EstimateSkewAllowance,
 	EstimateTimeLeft,
 	InvalidCodeLengthError,
-} from "../src";
+} from "@/totp";
 
 // Rate limiting configuration
 const RATE_LIMIT = {

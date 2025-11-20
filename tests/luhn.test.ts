@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { CalculateLuhnChecksum, VerifyLuhnChecksum } from "../src/luhn";
+import { CalculateLuhnChecksum, VerifyLuhnChecksum } from "@/luhn";
 
 describe("Luhn Checksum Calculation", () => {
 	test("calculates checksum for simple numbers", () => {
