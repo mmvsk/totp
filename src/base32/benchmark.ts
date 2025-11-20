@@ -1,6 +1,6 @@
-import { EncodeToBase32 as EncodeA, DecodeBase32 as DecodeA } from "./algorithms/chris-umbel";
-import { EncodeToBase32 as EncodeB, DecodeBase32 as DecodeB } from "./algorithms/linus-unnebaeck";
-import { EncodeToBase32 as EncodeC, DecodeBase32 as DecodeC } from "./algorithms/sonnet-4.5";
+import { EncodeToBase32 as EncodeA, DecodeBase32 as DecodeA } from "./implementations/chris-umbel";
+import { EncodeToBase32 as EncodeB, DecodeBase32 as DecodeB } from "./implementations/linus-unnebaeck";
+import { EncodeToBase32 as EncodeC, DecodeBase32 as DecodeC } from "./implementations/sonnet-4.5";
 
 
 type Encoder = (inputBytes: Uint8Array) => string;
