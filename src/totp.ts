@@ -123,7 +123,7 @@ export async function VerifyTotpCode(
 	code: DigitsString | string,
 	secret: Base32String,
 	options?: TotpVerificationOptions
-) {
+): Promise<boolean> {
 	const period = options?.period ?? DefaultPeriod;
 	const counter = Math.floor(GetSystemTime() / period);
 	return await VerifyHotpCode(code, counter, secret, options);
@@ -180,12 +180,12 @@ export async function GenerateHotpCode(
 
 	const hashBytes = await HashCounterState(counterState, keyBytes, algorithm);
 
-	const offset = hashBytes[hashBytes.length - 1] & 0xf;
+	const offset = hashBytes[hashBytes.length - 1]! & 0xf;
 	const fullCode = (0
-		| ((hashBytes[offset + 0] & 0x7f) << 24)
-		| ((hashBytes[offset + 1] & 0xff) << 16)
-		| ((hashBytes[offset + 2] & 0xff) << 8)
-		| (hashBytes[offset + 3] & 0xff)
+		| ((hashBytes[offset + 0]! & 0x7f) << 24)
+		| ((hashBytes[offset + 1]! & 0xff) << 16)
+		| ((hashBytes[offset + 2]! & 0xff) << 8)
+		| (hashBytes[offset + 3]! & 0xff)
 	);
 
 	const code = fullCode.toString(10).slice(-digits).padStart(digits, "0");
@@ -222,7 +222,7 @@ export async function VerifyHotpCode(
 	counter: LongInt,
 	secret: Base32String,
 	options?: HotpVerificationOptions
-) {
+): Promise<boolean> {
 	if (code.length < 6 || code.length > 10) {
 		throw new InvalidCodeLengthError(`Code length must be between 6 and 10 digits, got ${code.length}`);
 	}
@@ -249,7 +249,7 @@ export async function VerifyHotpCode(
 	);
 
 	for (let i = 0; i < counterValues.length; i++) {
-		if (await GenerateHotpCode(counterValues[i], secret, { ...options, digits }) === code) {
+		if (await GenerateHotpCode(counterValues[i]!, secret, { ...options, digits }) === code) {
 			return true;
 		}
 	}
@@ -306,7 +306,7 @@ export function GenerateTotpUrl(
 		period?: Seconds;
 		algorithm?: Algorithm;
 	}>
-) {
+): string {
 	const encodedIssuer = encodeURIComponent(issuer);
 	const encodedAccount = encodeURIComponent(`${issuer}:${user}`);
 
@@ -338,7 +338,7 @@ export function GenerateTotpUrl(
  * const codes = GenerateBackupCodes(8, 10, 4);
  * // ["JBSW-Y3DP-EHPK-3PXP", "KRUW-G4ZA-MF2G-S3LQ", ...]
  */
-export function GenerateBackupCodes(count: number, byteLength: number, groupBy: 1 | 4 | 8 = 1) {
+export function GenerateBackupCodes(count: number, byteLength: number, groupBy: 1 | 4 | 8 = 1): string[] {
 	return [...Array(count)].map(() => GenerateSingleBackupCode(byteLength, groupBy));
 }
 
@@ -356,7 +356,7 @@ export function GenerateBackupCodes(count: number, byteLength: number, groupBy: 
  * const code = GenerateSingleBackupCode(10, 4);
  * console.log(code); // "JBSW-Y3DP-EHPK-3PXP"
  */
-export function GenerateSingleBackupCode(byteLength: number, groupBy: 1 | 4 | 8 = 1) {
+export function GenerateSingleBackupCode(byteLength: number, groupBy: 1 | 4 | 8 = 1): string {
 	const secret = GenerateRandomSecret(byteLength);
 
 	if (groupBy > 1) {
@@ -377,7 +377,7 @@ export function GenerateSingleBackupCode(byteLength: number, groupBy: 1 | 4 | 8 
  * const timeLeft = EstimateTimeLeft(30);
  * console.log(`Code expires in ${timeLeft} seconds`);
  */
-export function EstimateTimeLeft(period: Seconds = DefaultPeriod) {
+export function EstimateTimeLeft(period: Seconds = DefaultPeriod): Seconds {
 	return period - (Math.floor(GetSystemTime()) % period);
 }
 
@@ -394,7 +394,7 @@ export function EstimateTimeLeft(period: Seconds = DefaultPeriod) {
  * const skew = EstimateSkewAllowance(30, 10);
  * const isValid = await VerifyTotpCode(code, secret, { allowedSkew: skew });
  */
-export function EstimateSkewAllowance(period: Seconds = DefaultPeriod, threshold: Seconds = 10) {
+export function EstimateSkewAllowance(period: Seconds = DefaultPeriod, threshold: Seconds = 10): { left: number, right: number } {
 	const timeLeft = EstimateTimeLeft(period);
 	const timeElapsed = period - timeLeft;
 

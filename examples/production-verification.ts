@@ -13,7 +13,7 @@ import {
 	EstimateSkewAllowance,
 	EstimateTimeLeft,
 	InvalidCodeLengthError,
-} from "../lib";
+} from "../src";
 
 // Rate limiting configuration
 const RATE_LIMIT = {

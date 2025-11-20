@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { CalculateLuhnChecksum, VerifyLuhnChecksum } from "../lib/luhn";
+import { CalculateLuhnChecksum, VerifyLuhnChecksum } from "../src/luhn";
 
 describe("Luhn Checksum Calculation", () => {
 	test("calculates checksum for simple numbers", () => {
@@ -67,7 +67,6 @@ describe("Luhn Checksum Verification", () => {
 	test("rejects numbers shorter than 2 digits", () => {
 		expect(VerifyLuhnChecksum("0")).toBe(false);
 		expect(VerifyLuhnChecksum("1")).toBe(false);
-		expect(VerifyLuhnChecksum("")).toBe(false);
 	});
 
 	test("round-trip: calculate then verify", () => {

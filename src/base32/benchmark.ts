@@ -91,7 +91,7 @@ function VerifyAlgorithms() {
 				console.error();
 				for (let i = 0; i < Math.min(a.byteLength, b.byteLength); i++) {
 					if (a[i] !== b[i]) {
-						console.error(`  byte #${i} mistmatch: A(${formatByte(a[i])}) <> B(${formatByte(b[i])})`)
+						console.error(`  byte #${i} mistmatch: A(${formatByte(a[i]!)}) <> B(${formatByte(b[i]!)})`)
 					}
 				}
 				console.error();

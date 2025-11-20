@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { EncodeToBase32, DecodeBase32 } from "../lib/base32";
+import { EncodeToBase32, DecodeBase32 } from "../src/base32";
 
 describe("Base32 Encoding", () => {
 	test("encodes empty input", () => {

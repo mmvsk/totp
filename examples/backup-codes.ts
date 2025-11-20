@@ -5,8 +5,8 @@
  * for account recovery when users lose their 2FA device.
  */
 
-import { GenerateBackupCodes, GenerateSingleBackupCode } from "../lib";
-import { CalculateLuhnChecksum } from "../lib/luhn";
+import { GenerateBackupCodes, GenerateSingleBackupCode } from "../src";
+import { CalculateLuhnChecksum } from "../src/luhn";
 
 console.log("=== Backup Code Generation ===\n");
 
@@ -36,7 +36,7 @@ async function hashBackupCode(code: string): Promise<string> {
 }
 
 // Hash the first code
-const firstCode = codes[0];
+const firstCode = codes[0]!;
 const hashedCode = await hashBackupCode(firstCode);
 console.log(`Original: ${firstCode}`);
 console.log(`Hashed:   ${hashedCode}`);
@@ -68,7 +68,7 @@ console.log("=== Verification Example ===\n");
 const storedHashes = await Promise.all(codes.map(hashBackupCode));
 
 // User enters a backup code (with or without dashes)
-const userInput = codes[2]; // Simulating user entering the 3rd code
+const userInput = codes[2]!; // Simulating user entering the 3rd code
 await verifyBackupCode(userInput, storedHashes);
 
 console.log("\n=== Different Grouping Styles ===\n");

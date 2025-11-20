@@ -1,12 +1,12 @@
 {
   "name": "totp",
-  "version": "1.0.0",
+  "version": "0.2.0",
   "description": "A lightweight TOTP/HOTP implementation with Base32 encoding, backup codes, and Luhn checksum utilities",
-  "module": "lib/index.ts",
-  "main": "lib/index.ts",
+  "module": "src/index.ts",
   "type": "module",
   "scripts": {
-    "play": "bun run play.ts"
+    "start": "bun run playground",
+    "typecheck": "tsc --noEmit"
   },
   "keywords": [
     "totp",
@@ -20,17 +20,17 @@
     "otpauth",
     "mfa"
   ],
-  "author": "",
+  "author": "Max Ruman",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": ""
+    "url": "https://github.com/mmvsk/totp"
   },
   "devDependencies": {
     "@types/bun": "^1.3.2",
     "typescript": "^6.0.0-dev.20251119"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "bun": ">=1.3.2"
   }
 }

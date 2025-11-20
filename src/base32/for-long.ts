@@ -1,16 +1,16 @@
 /*
  * Copyright (c) 2011, Chris Umbel
- * 
+ *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
  * in the Software without restriction, including without limitation the rights
  * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
  * copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice shall be included in
  * all copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -20,7 +20,7 @@
  * THE SOFTWARE.
  *
  * ---
- * 
+ *
  * Original repository: https://github.com/chrisumbel/thirty-two
  *
  * Modified by Max Ruman in 2024.
@@ -59,17 +59,17 @@ export function EncodeToBase32(inputBytes: Uint8Array, withPadding: boolean = tr
 		let charIndex = 0;
 
 		if (shiftIndex > 3) {
-			charIndex = currentByte & (0xff >> shiftIndex);
+			charIndex = currentByte! & (0xff >> shiftIndex);
 			shiftIndex = (shiftIndex + 5) % 8;
 			charIndex = (0
 				| (charIndex << shiftIndex)
-				| ((i + 1 < inputBytes.length) ? inputBytes[i + 1] : 0) >> (8 - shiftIndex)
+				| ((i + 1 < inputBytes.length) ? inputBytes[i + 1]! : 0) >> (8 - shiftIndex)
 			);
 
 			i++;
 
 		} else {
-			charIndex = (currentByte >> (8 - (shiftIndex + 5))) & 0x1f;
+			charIndex = (currentByte! >> (8 - (shiftIndex + 5))) & 0x1f;
 
 			shiftIndex = (shiftIndex + 5) % 8;
 
@@ -108,7 +108,7 @@ export function DecodeBase32(base32String: string): Uint8Array {
 			break;
 		}
 
-		const encodedByte = encoded[i] - 0x30;
+		const encodedByte = encoded[i]! - 0x30;
 
 		if (encodedByte >= ByteTable.length || encodedByte < 0) {
 			throw new Error("Invalid input: not a valid base32-encoded string");
@@ -117,28 +117,28 @@ export function DecodeBase32(base32String: string): Uint8Array {
 		const plainDigit = ByteTable[encodedByte];
 
 		if (plainDigit === 0xff) {
-			throw new Error(`Invalid character found: ${String.fromCharCode(encoded[i])}`);
+			throw new Error(`Invalid character found: ${String.fromCharCode(encoded[i]!)}`);
 		}
 
 		if (shiftIndex <= 3) {
 			shiftIndex = (shiftIndex + 5) % 8;
 
 			if (shiftIndex === 0) {
-				plainChar |= plainDigit;
+				plainChar |= plainDigit!;
 				decoded[plainIndex] = plainChar;
 				plainIndex++;
 				plainChar = 0;
 
 			} else {
-				plainChar |= 0xff & (plainDigit << (8 - shiftIndex));
+				plainChar |= 0xff & (plainDigit! << (8 - shiftIndex));
 			}
 
 		} else {
 			shiftIndex = (shiftIndex + 5) % 8;
-			plainChar |= 0xff & (plainDigit >>> shiftIndex);
+			plainChar |= 0xff & (plainDigit! >>> shiftIndex);
 			decoded[plainIndex] = plainChar;
 			plainIndex++;
-			plainChar = 0xff & (plainDigit << (8 - shiftIndex));
+			plainChar = 0xff & (plainDigit! << (8 - shiftIndex));
 		}
 
 	}

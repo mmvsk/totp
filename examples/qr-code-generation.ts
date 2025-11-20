@@ -9,7 +9,7 @@
  *   bun add @types/qrcode -d
  */
 
-import { GenerateRandomSecret, GenerateTotpUrl } from "../lib";
+import { GenerateRandomSecret, GenerateTotpUrl } from "../src";
 
 // Uncomment when you have qrcode installed:
 // import QRCode from "qrcode";
